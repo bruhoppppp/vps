@@ -13,9 +13,10 @@ docker volume prune -f >/dev/null
 echo "=== 📦 Kéo Ubuntu mới nhất ==="
 docker pull ubuntu:latest
 
-echo "=== 🚀 Tạo container Ubuntu mới với SSH và Docker ==="
+echo "=== 🚀 Tạo container Ubuntu mới với SSH, Docker và hostname KaesyrLabs ==="
 docker run -d \
   --name ubuntu-ssh \
+  --hostname KaesyrLabs \
   -p 1223:22 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v $(which docker):/usr/bin/docker \
@@ -31,7 +32,7 @@ docker run -d \
     tail -f /dev/null"
 
 echo "=== ✅ Container Ubuntu SSH + Docker đã sẵn sàng ==="
-echo "Mật khẩu root: 1234, cổng SSH: 1223"
+echo "Mật khẩu root: 1234, cổng SSH: 1223, hostname: KaesyrLabs"
 
 echo "=== 📥 Tải kami-tunnel ==="
 wget -q https://github.com/kami2k1/tunnel/releases/latest/download/kami-tunnel-linux-amd64.tar.gz
