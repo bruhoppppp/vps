@@ -10,8 +10,8 @@ docker network prune -f >/dev/null
 docker image prune -af >/dev/null
 docker volume prune -f >/dev/null
 
-echo "=== 📦 Kéo Ubuntu mới nhất ==="
-docker pull ubuntu:latest
+echo "=== 📦 Kéo Ubuntu systemd image ==="
+docker pull jrei/systemd-ubuntu:22.04
 
 echo "=== 🚀 Tạo container Ubuntu mới với systemd, SSH và Docker ==="
 docker run -d \
@@ -22,8 +22,7 @@ docker run -d \
   -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v $(which docker):/usr/bin/docker \
-  ubuntu:latest \
-  /sbin/init
+  jrei/systemd-ubuntu:22.04
 
 echo "=== 🧰 Cài đặt SSH, sudo, git, curl và cấu hình root login ==="
 docker exec ubuntu-ssh bash -c "\
