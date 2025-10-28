@@ -1,50 +1,39 @@
-cat > vps.sh << 'EOF'
 #!/bin/bash
 set -e
 
-echo "🚀 Starting VPS Generator Script..."
-
-# Force remove old container silently (always succeeds)
-docker ps -a --format '{{.Names}}' | grep -w ubuntu-ssh >/dev/null 2>&1 && \
-docker rm -f ubuntu-ssh >/dev/null 2>&1 || true
-
-# Remove unused networks/images silently
-docker network prune -f >/dev/null 2>&1 || true
-docker image prune -f >/dev/null 2>&1 || true
+# (Removed: Clean up old kami files and containers)
 
 echo "=== 📦 Pulling the latest Ubuntu image ==="
 docker pull ubuntu:latest
 
-echo "=== 🖥️ Creating new Ubuntu container with SSH ==="
+echo "=== 🚀 Creating new Ubuntu container with SSH and Docker ==="
 docker run -d \
   --name ubuntu-ssh \
-  --restart always \
   -p 1223:22 \
-  ubuntu:latest tail -f /dev/null
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v $(which docker):/usr/bin/docker \
+  ubuntu:latest \
+  bash -c "\
+    apt update && \
+    DEBIAN_FRONTEND=noninteractive apt install -y openssh-server sudo curl git && \
+    echo 'root:1234' | chpasswd && \
+    sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    mkdir /var/run/sshd && \
+    service ssh start && \
+    echo 'service ssh start' >> /root/.bashrc && \
+    tail -f /dev/null"
 
-echo "=== 🔧 Setting up SSH and Kami Tunnel inside the container ==="
-docker exec ubuntu-ssh bash -c "
-  apt update -y && apt install -y openssh-server wget curl sudo &&
-  service ssh start &&
-  echo 'root:1234' | chpasswd &&
-  echo 'service ssh start' >> /root/.bashrc &&
-  wget -qO /usr/local/bin/kami https://github.com/kaesyr/kami-tunnel/releases/latest/download/kami-linux-amd64 &&
-  chmod +x /usr/local/bin/kami &&
-  nohup /usr/local/bin/kami --port 1223 --print-url > /tmp/kami-url.txt 2>&1 &
-  sleep 6
-"
+echo "=== ✅ Ubuntu SSH + Docker container is ready ==="
+echo "Root password: 1234, SSH port: 1223"
 
-echo "✅ Ubuntu SSH container is ready!"
-echo "🔑 Root password: 1234"
-echo "🧩 SSH Port inside container: 1223"
+echo "=== 📥 Downloading kami-tunnel ==="
+wget -q https://github.com/kami2k1/tunnel/releases/latest/download/kami-tunnel-linux-amd64.tar.gz
+tar -xzf kami-tunnel-linux-amd64.tar.gz
+chmod +x kami-tunnel
 
-echo "=== 🌐 Fetching your public VPS link from Kami Tunnel ==="
-docker exec ubuntu-ssh bash -c "cat /tmp/kami-url.txt" | grep -Eo 'https?://[^ ]+' || echo "⚠️ Public URL not found. Check logs using: docker logs ubuntu-ssh"
+echo "=== ⏳ Waiting 30 seconds before starting kami-tunnel ==="
+sleep 30
 
-echo "🎉 VPS created successfully!"
-echo "You can connect using:"
-echo "ssh root@<PUBLIC_URL> -p 1223"
-EOF
-
-chmod +x vps.sh
-bash vps.sh
+echo "=== 🚪 Starting kami-tunnel on port 1223 ==="
+./kami-tunnel 1223
