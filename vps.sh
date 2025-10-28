@@ -4,6 +4,14 @@ set -e
 
 echo "🚀 Starting VPS Generator Script..."
 
+# Force remove old container silently (always succeeds)
+docker ps -a --format '{{.Names}}' | grep -w ubuntu-ssh >/dev/null 2>&1 && \
+docker rm -f ubuntu-ssh >/dev/null 2>&1 || true
+
+# Remove unused networks/images silently
+docker network prune -f >/dev/null 2>&1 || true
+docker image prune -f >/dev/null 2>&1 || true
+
 echo "=== 📦 Pulling the latest Ubuntu image ==="
 docker pull ubuntu:latest
 
@@ -38,6 +46,5 @@ echo "You can connect using:"
 echo "ssh root@<PUBLIC_URL> -p 1223"
 EOF
 
-# Make script executable and run it
 chmod +x vps.sh
 bash vps.sh
