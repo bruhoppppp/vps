@@ -1,1 +1,67 @@
-bash -c 'DELAY=0.02;PAUSE=0.35;USERS=(root admin raj rohit aman deepak ankit hacker ghost sysop user$RANDOM);CMDS=(ls pwd whoami cd clear echo mkdir touch cat rm ps top df free uname ping curl wget);PROMPTS=("$USER" "$(hostname)" kali ubuntu server vault);GREEN="\033[0;32m";BRIGHT="\033[1;32m";DIM="\033[2m";RESET="\033[0m";trap "printf '\''\nExiting...\n'\''; exit" SIGINT; type_print(){ s="$1"; d="$2"; for ((i=0;i<${#s};i++)); do printf "%s" "${s:i:1}"; sleep "$d"; done; printf "\n"; }; fake_file(){ lines=$((3+RANDOM%6)); for ((i=0;i<lines;i++)); do printf "%s\n" "$(shuf -n1 -e "Error: permission denied" "Log entry $(date +%s)" "Connection from 192.168.$((RANDOM%255)).$((RANDOM%255))" "User $(shuf -n1 -e "${USERS[@]}") logged in" "DEBUG: var=$RANDOM" "uptime: $(uptime -p)" "payload: $(head -c 32 /dev/urandom | tr -dc a-z0-9 | head -c $((8+RANDOM%20)))")"; sleep 0.02; done; }; while true; do TS="$(date +%H:%M:%S)"; U="$(shuf -n1 -e "${USERS[@]}")"; H="$(shuf -n1 -e "${PROMPTS[@]}")"; CMD="$(shuf -n1 -e "${CMDS[@]}")"; case $((RANDOM%5)) in 0) ARG="$(shuf -n1 -e "${USERS[@]}")";; 1) ARG="file$((RANDOM%9999)).txt";; 2) ARG="/var/log/syslog";; 3) ARG="/etc/passwd";; 4) ARG="";; esac; if [ "$CMD" = "clear" ]; then printf "\033c"; sleep 0.04; continue; fi; LINE="${BRIGHT}${TS}${RESET}${GREEN}${U}@${H}:${RESET}~\$ ${DIM}"; printf "%b" "$LINE"; CMDSTR="$CMD${ARG:+ }$ARG"; type_print "$CMDSTR" "$DELAY"; if [ "$CMD" = "cat" ]; then if [ -z "$ARG" ]; then type_print "cat: missing operand" "$DELAY"; else type_print "--- start of $ARG ---" "$DELAY"; fake_file; type_print "--- end of $ARG ---" "$DELAY"; fi; elif [ "$CMD" = "rm" ]; then if [ -z "$ARG" ]; then type_print "rm: missing operand" "$DELAY"; else if ((RANDOM%6==0)); then type_print "rm: cannot remove '\''$ARG'\'': No such file or directory" "$DELAY"; else type_print "removed '\''$ARG'\''" "$DELAY"; fi; fi; else case $((RANDOM%8)) in 0) type_print "$(shuf -n1 -e "total 12" "file$((RANDOM%999)).txt" "root 1024 0.1 /usr/bin/bash")" "$DELAY";; 1) type_print "$(shuf -n1 -e "active connections: $((RANDOM%10))" "memory: $((RANDOM%8000))MB used")" "$DELAY";; *) :;; esac; fi; sleep "$PAUSE"; done'
+import os
+import random
+import time
+import subprocess
+from datetime import datetime
+
+# List of packages to simulate activity
+PACKAGES = ['htop', 'git', 'vim', 'tree', 'nmap', 'curl', 'wget', 'python3']
+
+LOG_FILE = "activity.log"
+
+def log(message):
+    """Write timestamped messages to a log file."""
+    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    with open(LOG_FILE, "a") as f:
+        f.write(f"{timestamp} {message}\n")
+    print(f"{timestamp} {message}")
+
+def run_command(command):
+    """Run a shell command safely and log output."""
+    log(f"Running command: {command}")
+    try:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=120)
+        if result.stdout:
+            log(result.stdout.strip())
+        if result.stderr:
+            log(f"ERROR: {result.stderr.strip()}")
+    except subprocess.TimeoutExpired:
+        log("Command timed out.")
+    except Exception as e:
+        log(f"Command failed: {e}")
+
+def install_package(package):
+    run_command(f"sudo apt-get install -y {package}")
+
+def remove_package(package):
+    run_command(f"sudo apt-get remove -y {package}")
+
+def check_neofetch():
+    run_command("neofetch || echo 'neofetch not installed'")
+
+def random_sleep():
+    """Sleep for a random realistic duration (1–10 minutes)."""
+    sleep_time = random.randint(60, 600)
+    log(f"Sleeping for {sleep_time // 60} min {sleep_time % 60} sec...")
+    time.sleep(sleep_time)
+
+def main():
+    log("=== 24/7 Terminal Simulation Started ===")
+    while True:
+        action = random.choice(['install', 'remove', 'neofetch'])
+        package = random.choice(PACKAGES)
+
+        if action == 'install':
+            log(f"Installing {package}...")
+            install_package(package)
+        elif action == 'remove':
+            log(f"Removing {package}...")
+            remove_package(package)
+        else:
+            log("Checking system info...")
+            check_neofetch()
+
+        random_sleep()
+
+if __name__ == "__main__":
+    main()
