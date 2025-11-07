@@ -1,0 +1,121 @@
+#!/bin/bash
+
+echo "
+ ██ ███████ ██████  ███████ ███████        █████  ███    ███ ██████  ██  
+██  ██      ██   ██ ██      ██            ██   ██ ████  ████ ██   ██  ██ 
+██  █████   ██████  █████   ███████ █████ ███████ ██ ████ ██ ██   ██  ██ 
+██  ██      ██      ██           ██       ██   ██ ██  ██  ██ ██   ██  ██ 
+ ██ ██      ██      ███████ ███████       ██   ██ ██      ██ ██████  ██  
+                                                                         
+"
+echo "Sets up Ubuntu 24.04 with systemd support for Pterodactyl Panel/Wings"
+echo "This container will support systemctl and can run services properly"
+echo ""
+read -p "Are you sure you want to proceed? (y/n): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Installation aborted."
+    exit 1
+fi
+
+# Create Dockerfile
+cat <<'EOF' > Dockerfile
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV container=docker
+
+# Install systemd and essential packages
+RUN apt-get update && \
+    apt-get install -y \
+    systemd \
+    systemd-sysv \
+    dbus \
+    dbus-user-session \
+    nano \
+    neofetch \
+    curl \
+    wget \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    sudo \
+    net-tools \
+    iputils-ping \
+    software-properties-common && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set root password
+RUN echo 'root:root' | chpasswd
+
+# Configure systemd
+RUN cd /lib/systemd/system/sysinit.target.wants/ && \
+    ls | grep -v systemd-tmpfiles-setup | xargs rm -f && \
+    rm -f /lib/systemd/system/multi-user.target.wants/* && \
+    rm -f /etc/systemd/system/*.wants/* && \
+    rm -f /lib/systemd/system/local-fs.target.wants/* && \
+    rm -f /lib/systemd/system/sockets.target.wants/*udev* && \
+    rm -f /lib/systemd/system/sockets.target.wants/*initctl* && \
+    rm -f /lib/systemd/system/basic.target.wants/* && \
+    rm -f /lib/systemd/system/anaconda.target.wants/*
+
+# Fix unprivileged port access issue
+RUN echo "net.ipv4.ip_unprivileged_port_start=0" >> /etc/sysctl.conf
+
+# Create a startup script
+RUN echo '#!/bin/bash' > /startup.sh && \
+    echo 'sysctl -w net.ipv4.ip_unprivileged_port_start=0 2>/dev/null || true' >> /startup.sh && \
+    echo 'exec /sbin/init' >> /startup.sh && \
+    chmod +x /startup.sh
+
+# Set working directory
+WORKDIR /root
+
+# Expose common ports for Pterodactyl
+EXPOSE 80 443 8080 2022
+
+STOPSIGNAL SIGRTMIN+3
+
+ENTRYPOINT ["/startup.sh"]
+EOF
+
+echo "Building Docker image (this may take a few minutes)..."
+docker build -t ubuntu24-systemd . 2>&1 | grep -v "^#" | tail -20
+
+if [ $? -eq 0 ]; then
+    echo "✓ Done installing!"
+    echo ""
+    echo "
+ ██ ██████  ██    ██ ███    ██ ███    ██ ██ ███    ██  ██████      ██████  ███████ ██  
+██  ██   ██ ██    ██ ████   ██ ████   ██ ██ ████   ██ ██           ██   ██ ██       ██ 
+██  ██████  ██    ██ ██ ██  ██ ██ ██  ██ ██ ██ ██  ██ ██   ███     ██████  █████    ██ 
+██  ██   ██ ██    ██ ██  ██ ██ ██  ██ ██ ██ ██  ██ ██ ██    ██     ██      ██       ██ 
+ ██ ██   ██  ██████  ██   ████ ██   ████ ██ ██   ████  ██████      ██      ███████ ██  
+    "
+    echo "Container Details:"
+    echo "  • Username: root"
+    echo "  • Password: root"
+    echo "  • OS: Ubuntu 24.04"
+    echo "  • Systemd: Enabled"
+    echo "  • Docker: Ready to install"
+    echo ""
+    echo "Starting container in interactive mode..."
+    echo "After login, you can install Pterodactyl Panel/Wings"
+    echo ""
+    
+    # Run with proper systemd support
+    docker run -it \
+        --privileged \
+        --cap-add=ALL \
+        --cgroupns=host \
+        -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+        --tmpfs /run \
+        --tmpfs /run/lock \
+        --name pterodactyl-container \
+        ubuntu24-systemd
+else
+    echo "✗ Build failed. Please check the errors above."
+    exit 1
+fi
+EOF
