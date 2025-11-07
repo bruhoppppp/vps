@@ -42,6 +42,7 @@ RUN apt-get update && \
     sudo \
     net-tools \
     iputils-ping \
+    openssh-server \
     software-properties-common && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -49,7 +50,11 @@ RUN apt-get update && \
 # Set root password
 RUN echo 'root:root' | chpasswd
 
-# Configure systemd
+# Enable SSH login for root
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# Configure systemd - keep only essential services
 RUN cd /lib/systemd/system/sysinit.target.wants/ && \
     ls | grep -v systemd-tmpfiles-setup | xargs rm -f && \
     rm -f /lib/systemd/system/multi-user.target.wants/* && \
@@ -59,6 +64,10 @@ RUN cd /lib/systemd/system/sysinit.target.wants/ && \
     rm -f /lib/systemd/system/sockets.target.wants/*initctl* && \
     rm -f /lib/systemd/system/basic.target.wants/* && \
     rm -f /lib/systemd/system/anaconda.target.wants/*
+
+# Enable getty on tty1 for console login
+RUN systemctl set-default multi-user.target && \
+    systemctl enable getty@tty1.service
 
 # Fix unprivileged port access issue
 RUN echo "net.ipv4.ip_unprivileged_port_start=0" >> /etc/sysctl.conf
@@ -72,8 +81,8 @@ RUN echo '#!/bin/bash' > /startup.sh && \
 # Set working directory
 WORKDIR /root
 
-# Expose common ports for Pterodactyl
-EXPOSE 80 443 8080 2022
+# Expose common ports for Pterodactyl and SSH
+EXPOSE 22 80 443 8080 2022
 
 STOPSIGNAL SIGRTMIN+3
 
@@ -98,24 +107,58 @@ if [ $? -eq 0 ]; then
     echo "  • Password: root"
     echo "  • OS: Ubuntu 24.04"
     echo "  • Systemd: Enabled"
-    echo "  • Docker: Ready to install"
+    echo "  • SSH: Port 2222 (mapped from 22)"
     echo ""
-    echo "Starting container in interactive mode..."
-    echo "After login, you can install Pterodactyl Panel/Wings"
-    echo ""
+    echo "Starting container in detached mode..."
     
-    # Run with proper systemd support
-    docker run -it \
+    # Stop and remove old container if exists
+    docker stop pterodactyl-container 2>/dev/null
+    docker rm pterodactyl-container 2>/dev/null
+    
+    # Run with proper systemd support in detached mode
+    docker run -d \
         --privileged \
         --cap-add=ALL \
         --cgroupns=host \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         --tmpfs /run \
         --tmpfs /run/lock \
+        -p 2222:22 \
+        -p 8080:80 \
+        -p 8443:443 \
         --name pterodactyl-container \
         ubuntu24-systemd
+    
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "✓ Container started successfully!"
+        echo ""
+        echo "Access your container using one of these methods:"
+        echo ""
+        echo "1. Direct shell access:"
+        echo "   docker exec -it pterodactyl-container /bin/bash"
+        echo ""
+        echo "2. SSH access (after starting SSH):"
+        echo "   ssh root@localhost -p 2222"
+        echo "   Password: root"
+        echo ""
+        echo "3. View logs:"
+        echo "   docker logs pterodactyl-container"
+        echo ""
+        echo "To stop the container:"
+        echo "   docker stop pterodactyl-container"
+        echo ""
+        echo "To start again:"
+        echo "   docker start pterodactyl-container"
+        echo ""
+        echo "Now connecting to container..."
+        sleep 3
+        docker exec -it pterodactyl-container /bin/bash
+    else
+        echo "✗ Failed to start container"
+        exit 1
+    fi
 else
     echo "✗ Build failed. Please check the errors above."
     exit 1
 fi
-EOF
