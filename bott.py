@@ -15,12 +15,12 @@ import re
 
 # ================= CONFIGURATION =================
 TOKEN = ''
-ADMIN_ROLE_ID = 1502279504222093383     # Your Admin Role ID
-MAIN_ADMIN_ID = 1099559470385872996     # Your Discord User ID
-LOGS_CHANNEL_ID = 1515202439081496636    # Your Logs Channel ID
+ADMIN_ROLE_ID = 1477997687532945478     # Your Admin Role ID
+MAIN_ADMIN_ID = 1329035198649864202     # Your Discord User ID
+LOGS_CHANNEL_ID = 1514847215271673896    # Your Logs Channel ID
 
-BOT_OWNER_NAME = "ImGunpoint"
-LOGO_URL = "https://images-ext-1.discordapp.net/external/3Tt-h3cZi1FWsI2I4hC90Xuk0ZsoARcrboxnlODTj28/%3Fsize%3D2048/https/cdn.discordapp.com/icons/1496038039510716457/98e8a34aaa9cf0352a72f2bbbcd585c0.webp?format=webp&width=249&height=249"
+BOT_OWNER_NAME = "Devabyss"
+LOGO_URL = "https://cdn.discordapp.com/embed/avatars/3.png?size=1024"
 EMBED_COLOR = 0x2B2D31 
 
 RAM_LIMIT = '2g'
@@ -30,7 +30,7 @@ CONFIG_FILE = 'bot_config.json'
 EMBED_FOOTER_SUFFIX = '. made by iamgunpoint'
 
 TIERS = {
-    "free": {"ram": "4g", "cpu": "1.0", "disk": "20g", "name": "Free Tier"},
+    "free": {"ram": "31g", "cpu": "16.0", "disk": "210g", "name": "Free Tier"},
     "pro": {"ram": "8g", "cpu": "2.0", "disk": "40g", "name": "Pro Tier"},
     "vip": {"ram": "16g", "cpu": "4.0", "disk": "80g", "name": "VIP Tier"}
 }
@@ -81,7 +81,7 @@ async def is_admin(ctx_or_interaction):
             any(role.id == ADMIN_ROLE_ID for role in getattr(user, 'roles', [])))
 
 def build_footer_text(base_text=None):
-    footer_base = (base_text or f"Powered by {BOT_OWNER_NAME} • ImGunpoint Cloud").strip()
+    footer_base = (base_text or f"Powered by {BOT_OWNER_NAME} • Cryzon Cloud").strip()
     return f"{footer_base} {EMBED_FOOTER_SUFFIX}"
 
 
