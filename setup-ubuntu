@@ -23,7 +23,7 @@ read -p "Enter hostname (default: ubuntu): " HOSTNAME
 HOSTNAME=${HOSTNAME:-ubuntu}
 
 cat <<EOF > Dockerfile
-FROM ubuntu:latest
+FROM ubuntu:24.04
 
 RUN apt-get update
 RUN apt-get install nano neofetch curl -y
