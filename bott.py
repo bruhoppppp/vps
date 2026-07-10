@@ -27,7 +27,7 @@ RAM_LIMIT = '2g'
 STORAGE_LIMIT = '25g'
 DATABASE_FILE = 'vps_database.json'
 CONFIG_FILE = 'bot_config.json'
-EMBED_FOOTER_SUFFIX = '. made by iamgunpoint'
+EMBED_FOOTER_SUFFIX = '. made by Devabyss'
 
 TIERS = {
     "free": {"ram": "31g", "cpu": "16.0", "disk": "210g", "name": "Free Tier"},
