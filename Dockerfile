@@ -1,8 +1,14 @@
-FROM ubuntu:24.04
+FROM codercom/code-server:latest
 
-ENV container=docker
-ENV DEBIAN_FRONTEND=noninteractive
+USER root
 
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Asia/Shanghai \
+    PORT=7860 \
+    PASSWORD=shivanshbro \
+    container=docker
+
+# Install VPS utilities
 RUN apt-get update && \
     apt-get install -y \
         systemd \
@@ -24,23 +30,37 @@ RUN apt-get update && \
     echo "root:root" | chpasswd && \
     printf '#!/bin/sh\nexit 0\n' > /usr/sbin/policy-rc.d && \
     chmod +x /usr/sbin/policy-rc.d && \
-    systemctl enable ssh && \
-    printf "\nsystemctl start systemd-logind\n" >> /etc/profile && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Cloudflared
 RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | \
-    gpg --dearmor -o /usr/share/keyrings/cloudflare-main.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared noble main" > /etc/apt/sources.list.d/cloudflared.list && \
+        gpg --dearmor -o /usr/share/keyrings/cloudflare-main.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" \
+        > /etc/apt/sources.list.d/cloudflared.list && \
     apt-get update && \
     apt-get install -y cloudflared && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-EXPOSE 22
+# Create startup script
+RUN cat >/usr/local/bin/start.sh <<'EOF'
+#!/bin/bash
+set -e
 
-STOPSIGNAL SIGRTMIN+3
+# Start SSH
+mkdir -p /run/sshd
+/usr/sbin/sshd
 
-CMD ["/sbin/init"]
+# Start code-server
+exec code-server \
+    --bind-addr 0.0.0.0:${PORT} \
+    --auth password
+EOF
+
+RUN chmod +x /usr/local/bin/start.sh
+
+EXPOSE 22 7860
+
+ENTRYPOINT ["/usr/local/bin/start.sh"]
